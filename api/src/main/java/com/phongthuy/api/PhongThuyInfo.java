@@ -11,6 +11,7 @@ public class PhongThuyInfo {
     private String cungMenh; 
     private String nhomTrach; // Đông Tứ Trạch hoặc Tây Tứ Trạch
     
+    
     public PhongThuyInfo(String can, String chi, String menh, String mauSacPhuHop, String huongTaiLoc, String cungMenh, String nhomTrach) {
         this.can = can;
         this.chi = chi;

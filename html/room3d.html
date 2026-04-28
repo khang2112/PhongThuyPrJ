@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Môi trường Không gian 3D - ArchiFengShui</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1e293b; font-family: 'Segoe UI', sans-serif;}
+        canvas { display: block; }
+        
+        /* Giao diện Overlay đè lên 3D */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #3b82f6;
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            pointer-events: none; /* Để chuột xuyên qua, click được vào 3D bên dưới */
+            min-width: 250px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .hud-title { color: #fbbf24; margin-top: 0; font-size: 1.2rem; text-transform: uppercase;}
+        .hud-info { margin: 5px 0; font-size: 0.9rem; color: #cbd5e1;}
+        .highlight { color: #4ade80; font-weight: bold;}
+        
+        /* Nút quay lại */
+        #btnBack {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #btnBack:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <h3 class="hud-title">La Bàn Không Gian</h3>
+        <p class="hud-info">Gia chủ: <span id="uiMenh" class="highlight">Đang tải...</span></p>
+        <p class="hud-info">Cung: <span id="uiCung" class="highlight">...</span></p>
+        <p class="hud-info">Hướng Cát: <span id="uiHuong" class="highlight">...</span></p>
+        <hr style="border-color: #334155;">
+        <p class="hud-info" style="font-size: 0.8rem;"><i>* Chuột trái: Xoay | Cuộn: Zoom | Chuột phải: Di chuyển</i></p>
+    </div>
+
+    <button id="btnBack" onclick="window.location.href='index.html'">Quay Lại Dashboard</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        // --- 1. LẤY DỮ LIỆU TỪ DASHBOARD TRUYỀN SANG ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataString = urlParams.get('data');
+        let phongThuy = null;
+        
+        if(dataString) {
+            phongThuy = JSON.parse(decodeURIComponent(dataString));
+            // Cập nhật UI
+            document.getElementById('uiMenh').innerText = phongThuy.menh;
+            document.getElementById('uiCung').innerText = phongThuy.cungMenh + " (" + phongThuy.nhomTrach + ")";
+            document.getElementById('uiHuong').innerText = phongThuy.huongTaiLoc;
+        } else {
+            alert("Không tìm thấy dữ liệu gia chủ! Vui lòng thiết lập từ Dashboard.");
+            window.location.href = 'index.html';
+        }
+
+        // --- 2. KHỞI TẠO MÔI TRƯỜNG 3D (THREE.JS) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e293b); // Màu nền tối
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 5); // Đặt camera chéo từ trên nhìn xuống
+
+        // Renderer (Bộ xuất hình)
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Hệ thống điều khiển (Xoay, Zoom bằng chuột)
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; 
+
+        // --- 3. DỰNG KHÔNG GIAN CƠ BẢN ---
+        // --- 3. DỰNG KHÔNG GIAN CƠ BẢN ---
+// (Giữ nguyên phần Ánh sáng, Lưới mặt sàn và Trục tọa độ)
+
+// Khởi tạo công cụ tải file GLTF
+const loader = new THREE.GLTFLoader();
+
+// Biến để lưu trữ cái giường sau khi tải xong, giúp bạn dễ di chuyển nó sau này
+let giuongNgu;
+
+// Hàm kiểm tra hướng (đặt tạm ở đây để gọi)
+function getDirection(x, z) {
+    const angle = Math.atan2(z, x) * (180 / Math.PI);
+    if (angle >= -22.5 && angle < 22.5) return "Đông";
+    if (angle >= 22.5 && angle < 67.5) return "Đông Nam";
+    if (angle >= 67.5 && angle < 112.5) return "Nam";
+    if (angle >= 112.5 && angle < 157.5) return "Tây Nam";
+    if (angle >= 157.5 || angle < -157.5) return "Tây";
+    if (angle >= -157.5 && angle < -112.5) return "Tây Bắc";
+    if (angle >= -112.5 && angle < -67.5) return "Bắc";
+    if (angle >= -67.5 && angle < -22.5) return "Đông Bắc";
+    return "Trung Tâm";
+}
+
+// Bắt đầu tải file
+loader.load(
+    'models/giuong_ngu.glb', // Đường dẫn tới file bạn đã lưu ở Bước 1
+    function (gltf) {
+        // Hành động khi tải THÀNH CÔNG
+        giuongNgu = gltf.scene;
+        
+        // Chỉnh kích thước cho vừa vặn (nếu mô hình tải về quá to hoặc quá nhỏ)
+        giuongNgu.scale.set(1, 1, 1); 
+        
+        // Đặt vị trí ban đầu cho giường (x: 2, y: 0 (sát đất), z: 2)
+        giuongNgu.position.set(2, 0, 2); 
+        
+        // Đưa giường vào không gian 3D
+        scene.add(giuongNgu);
+        
+        // Chạy kiểm tra phong thủy ngay lập tức
+        const dir = getDirection(giuongNgu.position.x, giuongNgu.position.z);
+        console.log("Cái giường đang nằm ở hướng: " + dir);
+        alert("Đã đặt giường ở hướng: " + dir);
+    },
+    function (xhr) {
+        // Hành động đang tải (hiển thị % ở tab console F12)
+        console.log((xhr.loaded / xhr.total * 100) + '% đã tải');
+    },
+    function (error) {
+        // Hành động khi bị LỖI
+        console.error('Lỗi không tải được mô hình 3D', error);
+    }
+);
+
+        // --- 4. VÒNG LẶP RENDER MƯỢT MÀ ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Cần thiết cho OrbitControls damping
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Xử lý khi người dùng kéo giãn cửa sổ trình duyệt
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function getDirection(x, z) {
+    const angle = Math.atan2(z, x) * (180 / Math.PI);
+    if (angle >= -22.5 && angle < 22.5) return "Đông";
+    if (angle >= 22.5 && angle < 67.5) return "Đông Nam";
+    if (angle >= 67.5 && angle < 112.5) return "Nam";
+    if (angle >= 112.5 && angle < 157.5) return "Tây Nam";
+    if (angle >= 157.5 || angle < -157.5) return "Tây";
+    if (angle >= -157.5 && angle < -112.5) return "Tây Bắc";
+    if (angle >= -112.5 && angle < -67.5) return "Bắc";
+    if (angle >= -67.5 && angle < -22.5) return "Đông Bắc";
+    return "Trung Tâm";
+}
+    </script>
+</body>
+</html>
