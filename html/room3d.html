@@ -2,41 +2,42 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Môi trường Không gian 3D - ArchiFengShui</title>
+    <title>Môi trường Không gian 3D - Kho Đồ Nội Thất</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1e293b; font-family: 'Segoe UI', sans-serif;}
         canvas { display: block; }
         
-        /* Giao diện Overlay đè lên 3D */
+        /* Bảng thông tin góc trái */
         #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid #3b82f6;
-            padding: 20px;
-            border-radius: 12px;
-            color: white;
-            pointer-events: none; /* Để chuột xuyên qua, click được vào 3D bên dưới */
-            min-width: 250px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(15, 23, 42, 0.85); border: 1px solid #3b82f6;
+            padding: 20px; border-radius: 12px; color: white;
+            pointer-events: none; min-width: 250px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
         .hud-title { color: #fbbf24; margin-top: 0; font-size: 1.2rem; text-transform: uppercase;}
         .hud-info { margin: 5px 0; font-size: 0.9rem; color: #cbd5e1;}
         .highlight { color: #4ade80; font-weight: bold;}
         
+        /* Kho đồ (Inventory) góc phải */
+        #inventory {
+            position: absolute; top: 80px; right: 20px;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid #475569;
+            padding: 15px; border-radius: 12px; width: 200px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .inv-title { color: white; font-size: 1rem; margin-top: 0; text-align: center; border-bottom: 1px solid #475569; padding-bottom: 10px;}
+        .btn-item {
+            display: block; width: 100%; background: #334155; color: white;
+            border: 1px solid #475569; padding: 10px; margin-bottom: 10px;
+            border-radius: 8px; cursor: pointer; text-align: left; font-weight: bold; transition: 0.2s;
+        }
+        .btn-item:hover { background: #3b82f6; border-color: #60a5fa; transform: translateX(-5px); }
+
         /* Nút quay lại */
         #btnBack {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
+            position: absolute; top: 20px; right: 20px;
+            background: #ef4444; color: white; border: none;
+            padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;
         }
         #btnBack:hover { background: #dc2626; }
     </style>
@@ -47,135 +48,172 @@
         <h3 class="hud-title">La Bàn Không Gian</h3>
         <p class="hud-info">Gia chủ: <span id="uiMenh" class="highlight">Đang tải...</span></p>
         <p class="hud-info">Cung: <span id="uiCung" class="highlight">...</span></p>
-        <p class="hud-info">Hướng Cát: <span id="uiHuong" class="highlight">...</span></p>
         <hr style="border-color: #334155;">
-        <p class="hud-info" style="font-size: 0.8rem;"><i>* Chuột trái: Xoay | Cuộn: Zoom | Chuột phải: Di chuyển</i></p>
+        <p class="hud-info text-warning" id="uiStatus">Chưa có đồ vật nào được đặt.</p>
     </div>
 
-    <button id="btnBack" onclick="window.location.href='index.html'">Quay Lại Dashboard</button>
+    <button id="btnBack" onclick="window.location.href='index.html'">Quay Lại</button>
+
+    <div id="inventory">
+        <h4 class="inv-title">📦 KHO ĐỒ</h4>
+        <button class="btn-item" onclick="themVatThe('Giường Ngủ', 'models/giuong_ngu.glb', 'gltf')">🛏️ Thêm Giường Ngủ</button>
+        <button class="btn-item" onclick="themVatThe('Nhà Bếp', 'models/nha_bep.glb', 'gltf')">🍳 Thêm Nhà Bếp</button>
+        <button class="btn-item" onclick="themVatThe('Bàn Học', 'models/ban_hoc.glb', 'gltf')">📚 Thêm Bàn Học</button>
+        <button class="btn-item" onclick="themVatThe('Bàn Trà', 'models/ban.glb', 'gltf')">☕ Thêm Bàn Trà</button>
+        <p style="color: #94a3b8; font-size: 0.8rem; text-align: center; margin-bottom: 0;">* Bấm để ném vào phòng</p>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+
     <script>
-        // --- 1. LẤY DỮ LIỆU TỪ DASHBOARD TRUYỀN SANG ---
+        // 1. LẤY DỮ LIỆU GIA CHỦ
         const urlParams = new URLSearchParams(window.location.search);
         const dataString = urlParams.get('data');
         let phongThuy = null;
         
         if(dataString) {
             phongThuy = JSON.parse(decodeURIComponent(dataString));
-            // Cập nhật UI
             document.getElementById('uiMenh').innerText = phongThuy.menh;
             document.getElementById('uiCung').innerText = phongThuy.cungMenh + " (" + phongThuy.nhomTrach + ")";
-            document.getElementById('uiHuong').innerText = phongThuy.huongTaiLoc;
-        } else {
-            alert("Không tìm thấy dữ liệu gia chủ! Vui lòng thiết lập từ Dashboard.");
-            window.location.href = 'index.html';
         }
 
-        // --- 2. KHỞI TẠO MÔI TRƯỜNG 3D (THREE.JS) ---
+        // 2. KHỞI TẠO MÔI TRƯỜNG 3D
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1e293b); // Màu nền tối
-
-        // Camera
+        scene.background = new THREE.Color(0x1e293b);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 5, 5); // Đặt camera chéo từ trên nhìn xuống
-
-        // Renderer (Bộ xuất hình)
+        camera.position.set(5, 7, 5); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
-
-        // Hệ thống điều khiển (Xoay, Zoom bằng chuột)
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true; 
 
-        // --- 3. DỰNG KHÔNG GIAN CƠ BẢN ---
-        // --- 3. DỰNG KHÔNG GIAN CƠ BẢN ---
-// (Giữ nguyên phần Ánh sáng, Lưới mặt sàn và Trục tọa độ)
+        // 3. ÁNH SÁNG & KHÔNG GIAN
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+        scene.add(new THREE.GridHelper(20, 20, 0x3b82f6, 0x475569));
+        scene.add(new THREE.AxesHelper(5));
 
-// Khởi tạo công cụ tải file GLTF
-const loader = new THREE.GLTFLoader();
-
-// Biến để lưu trữ cái giường sau khi tải xong, giúp bạn dễ di chuyển nó sau này
-let giuongNgu;
-
-// Hàm kiểm tra hướng (đặt tạm ở đây để gọi)
-function getDirection(x, z) {
-    const angle = Math.atan2(z, x) * (180 / Math.PI);
-    if (angle >= -22.5 && angle < 22.5) return "Đông";
-    if (angle >= 22.5 && angle < 67.5) return "Đông Nam";
-    if (angle >= 67.5 && angle < 112.5) return "Nam";
-    if (angle >= 112.5 && angle < 157.5) return "Tây Nam";
-    if (angle >= 157.5 || angle < -157.5) return "Tây";
-    if (angle >= -157.5 && angle < -112.5) return "Tây Bắc";
-    if (angle >= -112.5 && angle < -67.5) return "Bắc";
-    if (angle >= -67.5 && angle < -22.5) return "Đông Bắc";
-    return "Trung Tâm";
-}
-
-// Bắt đầu tải file
-loader.load(
-    'models/giuong_ngu.glb', // Đường dẫn tới file bạn đã lưu ở Bước 1
-    function (gltf) {
-        // Hành động khi tải THÀNH CÔNG
-        giuongNgu = gltf.scene;
+        // 4. QUẢN LÝ KÉO THẢ VÀ KHO ĐỒ
+        let danhSachKeoTha = []; 
+        const dragControls = new THREE.DragControls(danhSachKeoTha, camera, renderer.domElement);
         
-        // Chỉnh kích thước cho vừa vặn (nếu mô hình tải về quá to hoặc quá nhỏ)
-        giuongNgu.scale.set(1, 1, 1); 
-        
-        // Đặt vị trí ban đầu cho giường (x: 2, y: 0 (sát đất), z: 2)
-        giuongNgu.position.set(2, 0, 2); 
-        
-        // Đưa giường vào không gian 3D
-        scene.add(giuongNgu);
-        
-        // Chạy kiểm tra phong thủy ngay lập tức
-        const dir = getDirection(giuongNgu.position.x, giuongNgu.position.z);
-        console.log("Cái giường đang nằm ở hướng: " + dir);
-        alert("Đã đặt giường ở hướng: " + dir);
-    },
-    function (xhr) {
-        // Hành động đang tải (hiển thị % ở tab console F12)
-        console.log((xhr.loaded / xhr.total * 100) + '% đã tải');
-    },
-    function (error) {
-        // Hành động khi bị LỖI
-        console.error('Lỗi không tải được mô hình 3D', error);
-    }
-);
+        // ==============================================================
+        // BÍ QUYẾT LÀ DÒNG NÀY ĐÂY:
+        dragControls.transformGroup = true; // Bắt buộc DragControls kéo nguyên khối
+        // ==============================================================
 
-        // --- 4. VÒNG LẶP RENDER MƯỢT MÀ ---
+        const gltfLoader = new THREE.GLTFLoader();
+
+        dragControls.addEventListener('dragstart', function (event) {
+            controls.enabled = false; // Tắt xoay camera
+            
+            // event.object lúc này đã chắc chắn là "cả nguyên khối"
+            event.object.position.y += 0.5; 
+            
+            const tenVatThe = event.object.userData.name || 'Vật phẩm'; 
+            document.getElementById('uiStatus').innerHTML = `Đang cầm: <b style="color:#fbbf24">${tenVatThe}</b>`;
+        });
+
+        dragControls.addEventListener('drag', function (event) {
+            // Giữ cả khối ngang mặt đất khi kéo
+            event.object.position.y = 0.5; 
+        });
+
+        dragControls.addEventListener('dragend', function (event) {
+            controls.enabled = true; // Bật lại camera
+            event.object.position.y = 0; // Thả chạm sàn
+
+            const x = event.object.position.x;
+            const z = event.object.position.z;
+            const huong = getDirection(x, z);
+            
+            const tenVatThe = event.object.userData.name || 'Vật phẩm'; 
+            document.getElementById('uiStatus').innerHTML = `Vừa đặt <b>${tenVatThe}</b> ở hướng <b style="color:#fbbf24">${huong}</b>`;
+        });
+
+        // --- HÀM THÊM VẬT THỂ ---
+        function themVatThe(tenVatThe, fileUrl, type, colorHex = 0xffffff) {
+            const randomX = (Math.random() - 0.5) * 4;
+            const randomZ = (Math.random() - 0.5) * 4;
+
+            if (type === 'gltf') {
+                gltfLoader.load(fileUrl, function (gltf) {
+                    const model = gltf.scene;
+                    model.position.set(randomX, 0, randomZ);
+                    
+                    // CHỈNH KÍCH THƯỚC: Nếu bếp hoặc bàn bị quá to, hãy hạ số 1 xuống (ví dụ 0.5, 0.2)
+                    // Nếu quá nhỏ, hãy tăng lên (ví dụ 2, 5).
+                    model.scale.set(1, 1, 1); 
+                    
+                    let mauNhuom = 0xffffff;
+                    if (phongThuy && phongThuy.menh === 'Mộc') mauNhuom = 0x4ade80;
+                    if (phongThuy && phongThuy.menh === 'Hỏa') mauNhuom = 0xf87171;
+                    if (phongThuy && phongThuy.menh === 'Thủy') mauNhuom = 0x3b82f6;
+                    if (phongThuy && phongThuy.menh === 'Kim') mauNhuom = 0xfbbf24;
+                    if (phongThuy && phongThuy.menh === 'Thổ') mauNhuom = 0xa16207;
+
+                    model.traverse(function (child) {
+                        if (child.isMesh && child.material) {
+                            child.material = child.material.clone();
+                            child.material.color.setHex(mauNhuom);
+                        }
+                    });
+
+                    model.userData = { name: tenVatThe };
+
+                    scene.add(model);
+                    danhSachKeoTha.push(model); 
+                    
+                    document.getElementById('uiStatus').innerText = "Đã thêm " + tenVatThe;
+                }, undefined, function (err) { alert("Không tìm thấy file " + fileUrl); });
+                
+            } else if (type === 'box') {
+                const geometry = new THREE.BoxGeometry(1.5, 1, 1.5);
+                const material = new THREE.MeshStandardMaterial({ color: colorHex });
+                const box = new THREE.Mesh(geometry, material);
+                
+                box.position.set(randomX, 0.5, randomZ); 
+                box.userData = { name: tenVatThe }; 
+                
+                scene.add(box);
+                danhSachKeoTha.push(box); 
+                
+                document.getElementById('uiStatus').innerText = "Đã thêm " + tenVatThe;
+            }
+        }
+
+        // 5. VÒNG LẶP RENDER VÀ CÁC HÀM PHỤ
         function animate() {
             requestAnimationFrame(animate);
-            controls.update(); // Cần thiết cho OrbitControls damping
+            controls.update(); 
             renderer.render(scene, camera);
         }
         animate();
 
-        // Xử lý khi người dùng kéo giãn cửa sổ trình duyệt
-        window.addEventListener('resize', onWindowResize, false);
-        function onWindowResize() {
+        window.addEventListener('resize', function() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+        });
 
         function getDirection(x, z) {
-    const angle = Math.atan2(z, x) * (180 / Math.PI);
-    if (angle >= -22.5 && angle < 22.5) return "Đông";
-    if (angle >= 22.5 && angle < 67.5) return "Đông Nam";
-    if (angle >= 67.5 && angle < 112.5) return "Nam";
-    if (angle >= 112.5 && angle < 157.5) return "Tây Nam";
-    if (angle >= 157.5 || angle < -157.5) return "Tây";
-    if (angle >= -157.5 && angle < -112.5) return "Tây Bắc";
-    if (angle >= -112.5 && angle < -67.5) return "Bắc";
-    if (angle >= -67.5 && angle < -22.5) return "Đông Bắc";
-    return "Trung Tâm";
-}
+            const angle = Math.atan2(z, x) * (180 / Math.PI);
+            if (angle >= -22.5 && angle < 22.5) return "Đông";
+            if (angle >= 22.5 && angle < 67.5) return "Đông Nam";
+            if (angle >= 67.5 && angle < 112.5) return "Nam";
+            if (angle >= 112.5 && angle < 157.5) return "Tây Nam";
+            if (angle >= 157.5 || angle < -157.5) return "Tây";
+            if (angle >= -157.5 && angle < -112.5) return "Tây Bắc";
+            if (angle >= -112.5 && angle < -67.5) return "Bắc";
+            if (angle >= -67.5 && angle < -22.5) return "Đông Bắc";
+            return "Trung Tâm";
+        }
     </script>
 </body>
 </html>
