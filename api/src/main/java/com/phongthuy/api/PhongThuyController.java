@@ -1,9 +1,5 @@
 package com.phongthuy.api;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -175,5 +171,51 @@ public class PhongThuyController {
         }
         
         return response;
+    }
+    
+    @GetMapping("/api/bo-tri-thong-minh")
+    public Map<String, Object> layGoiYBoTri(@RequestParam int namSinhChong, @RequestParam int namSinhVo) {
+        Map<String, Object> ketQua = new HashMap<>();
+
+        // 1. Khai báo các hướng tốt cơ bản (Giả lập logic tính Sinh Khí từ Quái số để code ngắn gọn)
+        // Trong thực tế, bạn sẽ gọi lại hàm tính Kua Number để lấy ra hướng chính xác
+        String huongTotChong = tinhHuongTotNhat(namSinhChong, 1); // 1 là Nam
+        String huongTotVo = tinhHuongTotNhat(namSinhVo, 2);     // 2 là Nữ
+
+        // 2. Gắn kết quả tư vấn chung
+        ketQua.put("thongTinChung", "Chồng hợp hướng " + huongTotChong + " | Vợ hợp hướng " + huongTotVo);
+
+        // 3. Quy tắc "1-Click Auto-Layout" (Gợi ý tự động)
+        // Đây chính là bộ luật để mảng 3D Frontend biết cách xoay vật thể tự động
+        Map<String, String> ruleBoTri = new HashMap<>();
+        
+        // Không gian của Chồng
+        ruleBoTri.put("Cửa Chính", huongTotChong);
+        ruleBoTri.put("Sofa Phòng Khách", huongTotChong);
+        ruleBoTri.put("Bàn Thờ", huongTotChong);
+
+        // Không gian của Vợ
+        ruleBoTri.put("Bếp Nấu", huongTotVo);
+        ruleBoTri.put("Giường Ngủ", huongTotVo);
+        ruleBoTri.put("Bàn Trang Điểm", huongTotVo);
+
+        ketQua.put("quyTacBoTri", ruleBoTri);
+
+        return ketQua;
+    }
+
+    // Hàm phụ trợ tính hướng Sinh Khí (Giả lập logic cốt lõi)
+    private String tinhHuongTotNhat(int namSinh, int gioiTinh) {
+        // Rút gọn tổng năm sinh
+        int sum = 0, temp = namSinh;
+        while (temp > 0) { sum += temp % 10; temp /= 10; }
+        while (sum > 9) { int s = 0; while (sum > 0) { s += sum % 10; sum /= 10; } sum = s; }
+        
+        int quaiSo = (gioiTinh == 1) ? (11 - sum) : (4 + sum);
+        if (quaiSo > 9) quaiSo -= 9;
+        
+        // Trả về hướng Sinh Khí tương ứng với từng Quái số (Rút gọn)
+        String[] huongSinhKhi = {"", "Đông Nam", "Đông Bắc", "Nam", "Bắc", "Tây Nam", "Tây", "Tây Bắc", "Tây Nam", "Đông"};
+        return huongSinhKhi[quaiSo];
     }
 }

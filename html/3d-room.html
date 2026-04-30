@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng 3D - Bố trí Nội thất Phong Thủy</title>
+    <!-- CSS trang trí giao diện UI -->
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; /* Ẩn thanh cuộn để 3D full màn hình */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #ui-panel { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            width: 300px;
+        }
+        h3 { margin-top: 0; color: #2c3e50; font-size: 18px;}
+        select, button { 
+            width: 100%; 
+            padding: 10px; 
+            margin-top: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #ccc;
+        }
+        button { 
+            background: #e74c3c; 
+            color: white; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.3s;
+        }
+        button:hover { background: #c0392b; }
+        .info { font-size: 13px; color: #7f8c8d; margin-top: 5px; }
+    </style>
+
+    <!-- Thư viện Three.js cốt lõi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Thư viện OrbitControls để dùng chuột xoay Camera 3D -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <!-- Bảng điều khiển (Giả lập nhận dữ liệu từ Java API) -->
+    <div id="ui-panel">
+        <h3>Thuật Toán Auto-Layout</h3>
+        <div class="info">Giả lập API vừa tính ra hướng tốt nhất cho chiếc giường này:</div>
+        
+        <select id="huongPhongThuy">
+            <option value="Bắc">Hướng Bắc (0°)</option>
+            <option value="Đông Bắc">Hướng Đông Bắc (45°)</option>
+            <option value="Đông">Hướng Đông (90°)</option>
+            <option value="Đông Nam">Hướng Đông Nam (135°)</option>
+            <option value="Nam">Hướng Nam (180°)</option>
+            <option value="Tây Nam" selected>Hướng Tây Nam (225°)</option>
+            <option value="Tây">Hướng Tây (270°)</option>
+            <option value="Tây Bắc">Hướng Tây Bắc (315°)</option>
+        </select>
+
+        <button onclick="kichHoatTuDongXoay()">1-Click Xoay Giường</button>
+        <div class="info" style="margin-top:15px"><i>* Dùng chuột trái rê màn hình để xoay góc nhìn camera.</i></div>
+    </div>
+
+    <!-- Môi trường đồ họa 3D -->
+    <script>
+        // 1. DỰNG CẢNH (Scene), MÁY QUAY (Camera) VÀ XUẤT HÌNH (Renderer)
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xdce5ec); // Màu nền của bầu trời
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 6, 7); // Đặt camera đứng xa và cao lên một chút
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Bật tính năng dùng chuột để xoay thế giới 3D
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // 2. THÊM ÁNH SÁNG
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 5);
+        scene.add(light);
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        scene.add(ambientLight);
+
+        // 3. TẠO MẶT SÀN NHÀ VÀ LA BÀN TỌA ĐỘ
+        const floorGeo = new THREE.PlaneGeometry(10, 10);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = Math.PI / 2; // Bẻ mặt phẳng nằm ngang ra làm sàn
+        scene.add(floor);
+
+        // Thẻ lưới tọa độ (giúp dễ nhìn hướng)
+        const gridHelper = new THREE.GridHelper(10, 20, 0x000000, 0x888888);
+        scene.add(gridHelper);
+
+        // 4. CHẾ TẠO CHIẾC GIƯỜNG NGỦ BẰNG CÁC KHỐI HÌNH (Geometry)
+        const bedGroup = new THREE.Group(); // Tạo 1 nhóm để gom nệm và thành giường lại
+
+        // Thành giường (Màu gỗ nâu)
+        const headboardGeo = new THREE.BoxGeometry(2, 1.2, 0.2);
+        const headboardMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const headboard = new THREE.Mesh(headboardGeo, headboardMat);
+        headboard.position.set(0, 0.6, -1.4); // Đẩy thành giường ra phía sau
+
+        // Nệm giường (Màu hồng)
+        const mattressGeo = new THREE.BoxGeometry(2, 0.4, 2.8);
+        const mattressMat = new THREE.MeshStandardMaterial({ color: 0xffb6c1 });
+        const mattress = new THREE.Mesh(mattressGeo, mattressMat);
+        mattress.position.set(0, 0.2, 0);
+
+        // Gắn vào nhóm
+        bedGroup.add(headboard);
+        bedGroup.add(mattress);
+        scene.add(bedGroup);
+
+        // 5. THUẬT TOÁN ĐỔI HƯỚNG SANG GÓC RADIAN
+        function tinhGocRadian(huong) {
+            const PI = Math.PI;
+            const tuDienHuong = {
+                "Bắc": 0,
+                "Đông Bắc": PI / 4,
+                "Đông": PI / 2,
+                "Đông Nam": (3 * PI) / 4,
+                "Nam": PI,
+                "Tây Nam": (5 * PI) / 4,
+                "Tây": (3 * PI) / 2,
+                "Tây Bắc": (7 * PI) / 4
+            };
+            return tuDienHuong[huong] || 0;
+        }
+
+        // Biến lưu trữ góc mà giường cần xoay tới
+        let gocXoayMucTieu = 0;
+
+        // Hàm được gọi khi bấm nút trên giao diện
+        window.kichHoatTuDongXoay = function() {
+            const huongDuocChon = document.getElementById('huongPhongThuy').value;
+            gocXoayMucTieu = tinhGocRadian(huongDuocChon);
+        }
+
+        // 6. VÒNG LẶP RENDER (CẬP NHẬT CHUYỂN ĐỘNG LIÊN TỤC 60 FPS)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Thuật toán Lerp (Linear Interpolation) tạo hiệu ứng xoay từ từ rất mượt
+            // Mỗi khung hình, chiếc giường nhích 5% quãng đường đến mục tiêu
+            bedGroup.rotation.y += (gocXoayMucTieu - bedGroup.rotation.y) * 0.05;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 7. Xử lý co giãn màn hình khi đổi kích thước trình duyệt
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
